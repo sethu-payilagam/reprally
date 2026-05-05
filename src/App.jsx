@@ -1,14 +1,22 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+import { loadGroupsWithConfig } from "./groups";
+import { T, FONT, FONT_DISPLAY } from "./theme";
 import AuthScreen from "./screens/AuthScreen";
 import EnrollScreen from "./screens/EnrollScreen";
 import Dashboard from "./screens/Dashboard";
 import AdminPanel from "./screens/AdminPanel";
 
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession]   = useState(null);
+  const [profile, setProfile]   = useState(null);
+  const [groups,  setGroups]    = useState(null);
+  const [loading, setLoading]   = useState(true);
+
+  // Load group config once on startup
+  useEffect(() => {
+    loadGroupsWithConfig().then(setGroups);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -36,31 +44,35 @@ export default function App() {
     setProfile(null);
   }
 
-  if (loading) return <LoadingScreen />;
-  if (!session) return <AuthScreen />;
-  if (!profile?.group_id) return <EnrollScreen userId={session.user.id} onComplete={() => fetchProfile(session.user.id)} />;
-  if (profile?.is_admin) return <AdminPanel profile={profile} onSignOut={handleSignOut} />;
-  return <Dashboard profile={profile} onSignOut={handleSignOut} onProfileUpdate={() => fetchProfile(session.user.id)} />;
+  async function refreshGroups() {
+    const updated = await loadGroupsWithConfig();
+    setGroups(updated);
+  }
+
+  if (loading || !groups) return <LoadingScreen />;
+  if (!session)            return <AuthScreen />;
+  if (!profile?.group_id)  return <EnrollScreen userId={session.user.id} onComplete={() => fetchProfile(session.user.id)} groups={groups} />;
+  if (profile?.is_admin)   return <AdminPanel profile={profile} onSignOut={handleSignOut} groups={groups} onGroupsUpdated={refreshGroups} />;
+  return <Dashboard profile={profile} onSignOut={handleSignOut} groups={groups} onProfileUpdate={() => fetchProfile(session.user.id)} />;
 }
 
 function LoadingScreen() {
   return (
     <div style={{
-      minHeight: "100vh", background: "#080808",
+      minHeight: "100vh", background: T.bg,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'Barlow Condensed', sans-serif"
+      fontFamily: FONT
     }}>
       <div style={{ textAlign: "center" }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16, margin: "0 auto 16px",
-          background: "linear-gradient(135deg, #ff4d00, #ff9500)",
+          background: `linear-gradient(135deg, #e85d20, #ff8c52)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28, animation: "pulse 1.5s infinite"
+          fontSize: 28
         }}>🔥</div>
-        <div style={{ color: "#ff4d00", fontSize: 22, fontWeight: 700, letterSpacing: 2 }}>REPRALLY</div>
-        <div style={{ color: "#333", fontSize: 13, marginTop: 6 }}>Loading your grind...</div>
+        <div style={{ color: "#e85d20", fontSize: 24, fontWeight: 800, letterSpacing: 2, fontFamily: FONT_DISPLAY }}>REPRALLY</div>
+        <div style={{ color: T.muted, fontSize: 13, marginTop: 6 }}>Loading your grind...</div>
       </div>
-      <style>{`@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }`}</style>
     </div>
   );
 }

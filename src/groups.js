@@ -1,21 +1,23 @@
+import { supabase } from "./supabaseClient";
+
 export const GROUPS = [
   {
     id: 1,
     name: "Ground Force",
     tagline: "1,000 Rep Bodyweight Challenge",
     icon: "💪",
-    color: "#ff4d00",
+    color: "#e85d20",
     target: 1000,
     unit: "reps",
     description: "Hit 1,000 total reps of bodyweight movements. Count 500 per side for unilateral exercises.",
     exercises: [
-      { id: "pushups",       label: "Push-Ups",       icon: "🫸", bilateral: false, note: "" },
-      { id: "leg_raises",    label: "Leg Raises",     icon: "🦵", bilateral: false, note: "" },
-      { id: "russian_twist", label: "Russian Twist",  icon: "🌀", bilateral: true,  note: "Count 500 per side → log total" },
-      { id: "dead_bug",      label: "Dead Bug",       icon: "🐛", bilateral: true,  note: "Count 500 per side → log total" },
-      { id: "squats",        label: "Squats",         icon: "🏋️", bilateral: false, note: "" },
-      { id: "lunges",        label: "Lunges",         icon: "🦿", bilateral: true,  note: "Count 500 per leg → log total" },
-      { id: "orangetheory",  label: "OrangeTheory",   icon: "🟠", bilateral: false, note: "Log reps performed in class" },
+      { id: "pushups",       label: "Push-Ups",      icon: "🫸", bilateral: false, note: "" },
+      { id: "leg_raises",    label: "Leg Raises",    icon: "🦵", bilateral: false, note: "" },
+      { id: "russian_twist", label: "Russian Twist", icon: "🌀", bilateral: true,  note: "Count 500 per side → log total" },
+      { id: "dead_bug",      label: "Dead Bug",      icon: "🐛", bilateral: true,  note: "Count 500 per side → log total" },
+      { id: "squats",        label: "Squats",        icon: "🏋️", bilateral: false, note: "" },
+      { id: "lunges",        label: "Lunges",        icon: "🦿", bilateral: true,  note: "Count 500 per leg → log total" },
+      { id: "orangetheory",  label: "OrangeTheory",  icon: "🟠", bilateral: false, note: "Log reps from class" },
     ]
   },
   {
@@ -45,9 +47,9 @@ export const GROUPS = [
     unit: "steps + minutes",
     description: "200,000 steps (avg 10K/day) plus 60 total plank minutes (30 min per side for side planks).",
     exercises: [
-      { id: "steps",       label: "Steps",        icon: "👟", bilateral: false, note: "Log daily step count" },
-      { id: "plank",       label: "Plank",        icon: "⏱️", bilateral: false, note: "Minutes held", unitOverride: "min" },
-      { id: "side_plank",  label: "Side Plank",   icon: "↔️", bilateral: true,  note: "30 min per side → log total", unitOverride: "min" },
+      { id: "steps",      label: "Steps",      icon: "👟", bilateral: false, note: "Log daily step count", unitOverride: "steps" },
+      { id: "plank",      label: "Plank",      icon: "⏱️", bilateral: false, note: "Minutes held",          unitOverride: "min" },
+      { id: "side_plank", label: "Side Plank", icon: "↔️", bilateral: true,  note: "30 min per side → log total", unitOverride: "min" },
     ]
   },
   {
@@ -58,25 +60,41 @@ export const GROUPS = [
     color: "#dc2626",
     target: 2000,
     unit: "reps",
-    description: "2,000 combined reps across all Group 1 movements. Mix and match — e.g. 700 push-ups + 700 squats + 600 core.",
+    description: "2,000 combined reps across all bodyweight movements. Mix and match — e.g. 700 push-ups + 700 squats + 600 core.",
     exercises: [
-      { id: "pushups",       label: "Push-Ups",       icon: "🫸", bilateral: false, note: "" },
-      { id: "leg_raises",    label: "Leg Raises",     icon: "🦵", bilateral: false, note: "" },
-      { id: "russian_twist", label: "Russian Twist",  icon: "🌀", bilateral: true,  note: "Count 500 per side" },
-      { id: "dead_bug",      label: "Dead Bug",       icon: "🐛", bilateral: true,  note: "Count 500 per side" },
-      { id: "squats",        label: "Squats",         icon: "🏋️", bilateral: false, note: "" },
-      { id: "lunges",        label: "Lunges",         icon: "🦿", bilateral: true,  note: "Count 500 per leg" },
-      { id: "orangetheory",  label: "OrangeTheory",   icon: "🟠", bilateral: false, note: "Log reps from class" },
+      { id: "pushups",       label: "Push-Ups",      icon: "🫸", bilateral: false, note: "" },
+      { id: "leg_raises",    label: "Leg Raises",    icon: "🦵", bilateral: false, note: "" },
+      { id: "russian_twist", label: "Russian Twist", icon: "🌀", bilateral: true,  note: "Count 500 per side" },
+      { id: "dead_bug",      label: "Dead Bug",      icon: "🐛", bilateral: true,  note: "Count 500 per side" },
+      { id: "squats",        label: "Squats",        icon: "🏋️", bilateral: false, note: "" },
+      { id: "lunges",        label: "Lunges",        icon: "🦿", bilateral: true,  note: "Count 500 per leg" },
+      { id: "orangetheory",  label: "OrangeTheory",  icon: "🟠", bilateral: false, note: "Log reps from class" },
     ]
   }
 ];
 
-export function getGroup(id) {
-  return GROUPS.find(g => g.id === Number(id));
+// Merge DB config (admin-editable targets) into GROUPS
+export async function loadGroupsWithConfig() {
+  const { data } = await supabase.from("group_config").select("*");
+  if (!data) return GROUPS;
+  return GROUPS.map(g => {
+    const cfg = data.find(c => c.id === g.id);
+    if (!cfg) return g;
+    return {
+      ...g,
+      ...(cfg.target      != null && { target: cfg.target }),
+      ...(cfg.target_steps != null && { target_steps: cfg.target_steps }),
+      ...(cfg.target_plank != null && { target_plank: cfg.target_plank }),
+    };
+  });
+}
+
+export function getGroup(id, groups = GROUPS) {
+  return groups.find(g => g.id === Number(id));
 }
 
 export function getGroupProgress(group, logs) {
-  if (!group || !logs) return { pct: 0, summary: {} };
+  if (!group || !logs) return { pct: 0, summary: {}, totalReps: 0 };
   const summary = {};
   logs.forEach(log => {
     summary[log.exercise_id] = (summary[log.exercise_id] || 0) + log.reps;
@@ -84,10 +102,10 @@ export function getGroupProgress(group, logs) {
   const totalReps = Object.values(summary).reduce((a, b) => a + b, 0);
 
   if (group.id === 3) {
-    const steps = summary["steps"] || 0;
+    const steps     = summary["steps"] || 0;
     const plankMins = (summary["plank"] || 0) + (summary["side_plank"] || 0);
-    const stepPct = Math.min(100, (steps / group.target_steps) * 100);
-    const plankPct = Math.min(100, (plankMins / group.target_plank) * 100);
+    const stepPct   = Math.min(100, (steps / (group.target_steps || 200000)) * 100);
+    const plankPct  = Math.min(100, (plankMins / (group.target_plank || 60)) * 100);
     return { pct: Math.round((stepPct + plankPct) / 2), steps, plankMins, summary, totalReps };
   }
   const target = group.target || 1000;
