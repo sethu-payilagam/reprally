@@ -18,7 +18,7 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
   async function fetchData() {
     const [{ data: myLogs }, { data: profiles }, { data: everyone }] = await Promise.all([
       supabase.from("logs").select("*").eq("user_id", profile.id).order("logged_at", { ascending: false }),
-      supabase.from("profiles").select("id,display_name,group_id,avatar_emoji").eq("approved", true),
+      supabase.from("profiles").select("id,display_name,group_id,avatar_emoji").eq("approved", true).eq("is_admin", false),
       supabase.from("logs").select("*").order("logged_at", { ascending: false }).limit(300)
     ]);
     setLogs(myLogs || []);
@@ -232,16 +232,34 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
                       <div style={{ color: g.color, fontSize: 11, fontWeight: 600 }}>{g.tagline}</div>
                     </div>
                   </div>
-                  <div style={{ color: T.textMid, fontSize: 13, lineHeight: 1.7, paddingLeft: 42 }}>
+                  {/* Line 1: Description / pattern to follow */}
+                  <div style={{ color: T.textMid, fontSize: 13, lineHeight: 1.7, paddingLeft: 42, marginBottom: 8 }}>
                     {g.description}
                   </div>
-                  <div style={{ paddingLeft: 42, marginTop: 8 }}>
+                  {/* Line 2: User instruction - aim for target (dynamic from admin) */}
+                  <div style={{ paddingLeft: 42, marginBottom: 6 }}>
+                    <div style={{ color: T.textMid, fontSize: 13, lineHeight: 1.6 }}>
+                      {g.id === 3 ? (
+                        <>
+                          🏆 Aim for <strong style={{ color: g.color }}>{(g.target_steps || 200000).toLocaleString()} steps</strong> and <strong style={{ color: g.color }}>{g.target_plank || 60} minutes</strong> of plank by end of month.
+                          That is roughly <strong style={{ color: g.color }}>10,000 steps/day</strong> and <strong style={{ color: g.color }}>2 min plank/day</strong>.
+                        </>
+                      ) : (
+                        <>
+                          🏆 Aim for <strong style={{ color: g.color }}>{(g.target || 1000).toLocaleString()} total reps</strong> by end of month.
+                          Break it up however you like — every rep counts!
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {/* Live target badge - updates when admin changes target */}
+                  <div style={{ paddingLeft: 42, marginBottom: 8 }}>
                     <span style={{
                       background: g.color + "18", border: "1px solid " + g.color + "44",
                       borderRadius: 8, padding: "4px 10px",
                       color: g.color, fontSize: 12, fontWeight: 700
                     }}>
-                      🎯 Target: {g.id === 3
+                      🎯 Current Target: {g.id === 3
                         ? (g.target_steps || 200000).toLocaleString() + " steps + " + (g.target_plank || 60) + " min plank"
                         : (g.target || 1000).toLocaleString() + " reps"}
                     </span>
