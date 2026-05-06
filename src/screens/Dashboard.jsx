@@ -18,7 +18,7 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
   async function fetchData() {
     const [{ data: myLogs }, { data: profiles }, { data: everyone }] = await Promise.all([
       supabase.from("logs").select("*").eq("user_id", profile.id).order("logged_at", { ascending: false }),
-      supabase.from("profiles").select("id,display_name,group_id,avatar_emoji").eq("approved", true).eq("is_admin", false),
+      supabase.from("profiles").select("id,display_name,group_id,avatar_emoji").eq("approved", true),
       supabase.from("logs").select("*").order("logged_at", { ascending: false }).limit(300)
     ]);
     setLogs(myLogs || []);
@@ -60,7 +60,7 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
     const members = allProfiles.map(p => {
       const pLogs = allLogs.filter(l => l.user_id === p.id && l.group_id === g.id);
       const prog  = getGroupProgress(g, pLogs);
-      return { ...p, pct: prog.pct, totalReps: prog.totalReps || 0, steps: prog.steps || 0, plankMins: prog.plankMins || 0 };
+      return { ...p, pct: prog.pct, totalReps: prog.totalReps || 0, steps: prog.steps || 0, plankMins: prog.plankMins || 0, prog };
     }).filter(p => p.totalReps > 0 || p.steps > 0 || p.group_id === g.id)
       .sort((a, b) => b.pct - a.pct);
     return { group: g, members };
@@ -235,6 +235,17 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
                   <div style={{ color: T.textMid, fontSize: 13, lineHeight: 1.7, paddingLeft: 42 }}>
                     {g.description}
                   </div>
+                  <div style={{ paddingLeft: 42, marginTop: 8 }}>
+                    <span style={{
+                      background: g.color + "18", border: "1px solid " + g.color + "44",
+                      borderRadius: 8, padding: "4px 10px",
+                      color: g.color, fontSize: 12, fontWeight: 700
+                    }}>
+                      🎯 Target: {g.id === 3
+                        ? (g.target_steps || 200000).toLocaleString() + " steps + " + (g.target_plank || 60) + " min plank"
+                        : (g.target || 1000).toLocaleString() + " reps"}
+                    </span>
+                  </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, paddingLeft: 42 }}>
                     {g.exercises.map(ex => (
                       <span key={ex.id} style={{
@@ -310,6 +321,20 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
                             <span style={{ color: i === 0 ? g.color : T.textMid, fontWeight: 800, fontSize: 18, fontFamily: FONT_DISPLAY }}>
                               {u.pct}%
                             </span>
+                          </div>
+                          {/* Actual numbers below the name */}
+                          <div style={{ color: T.muted, fontSize: 12, marginTop: 2 }}>
+                            {g.id === 3 ? (
+                              <span>
+                                👟 {(u.steps || 0).toLocaleString()} / {(g.target_steps || 200000).toLocaleString()} steps
+                                {" · "}
+                                ⏱️ {(u.plankMins || 0)} / {g.target_plank || 60} min
+                              </span>
+                            ) : (
+                              <span>
+                                {(u.totalReps || 0).toLocaleString()} / {(g.target || 1000).toLocaleString()} reps
+                              </span>
+                            )}
                           </div>
                           <div style={{ background: T.bgAlt, borderRadius: 100, height: 5, marginTop: 6, overflow: "hidden" }}>
                             <div style={{
