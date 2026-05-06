@@ -234,7 +234,7 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
                   </div>
                   {/* Line 1: Description / pattern to follow */}
                   <div style={{ color: T.textMid, fontSize: 13, lineHeight: 1.7, paddingLeft: 42, marginBottom: 8 }}>
-                    {g.description}
+                    {}
                   </div>
                   {/* Line 2: User instruction - aim for target (dynamic from admin) */}
                   <div style={{ paddingLeft: 42, marginBottom: 6 }}>
