@@ -18,7 +18,7 @@ export default function Dashboard({ profile, onSignOut, groups = GROUPS, onProfi
   async function fetchData() {
     const [{ data: myLogs }, { data: profiles }, { data: everyone }] = await Promise.all([
       supabase.from("logs").select("*").eq("user_id", profile.id).order("logged_at", { ascending: false }),
-      supabase.from("profiles").select("id,display_name,group_id,avatar_emoji").eq("approved", true),
+      supabase.from("profiles").select("id,display_name,group_id,avatar_emoji").eq("approved", true).eq("is_admin", false),
       supabase.from("logs").select("*").order("logged_at", { ascending: false }).limit(300)
     ]);
     setLogs(myLogs || []);
